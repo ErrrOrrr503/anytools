@@ -19,7 +19,7 @@ DIFF_CMD="diff -ruN"
 for file in $(find $DIR_A -regextype awk -regex '(.*\.)([ch]$|[ch]pp$|[ch]xx$|in)')
 do
 	file=${file:2}
-	if [[! -f $DIR_B$file ]]
+	if [[ ! -f $DIR_B$file ]]
 	then
 		continue
 	fi
