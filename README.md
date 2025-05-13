@@ -17,3 +17,12 @@ Use tags:
 	</FILE_BASE64>
 
 The script will decode base64 stream to binary, keeping other lines intact.
+
+## filewaiter.sh
+Wait for a file (with provided path) to be created or moved, then return 0.
+
+Usage:
+
+```shell
+> filewaiter.sh <filename> && <do smth with the file, i.e. sed>
+``` 
