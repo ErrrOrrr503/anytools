@@ -29,8 +29,6 @@ function get_parent_dir()
     echo "$parent_dir"
 }
 
-new_parent_dir=$(get_parent_dir "$target_file")
-
 _fifo=""
 _inotify_pid=""
 
@@ -45,33 +43,39 @@ function launch_inotifywait()
     then
         mkfifo "$_fifo"
     fi
-    inotifywait -q -m -r -e create,moved_to --format "%w%f" "$parent_dir" > "$_fifo" &
+    # moved from and delete needed to track subidrs deletions and revert parent folder
+    inotifywait -q -m -r -e create,move_self,delete_self --format "%w%f" "$parent_dir" > "$_fifo" &
     _inotify_pid=$!
 }
 
 function stop_inotifywait()
 {
-    if [[ -z "$_inotify_pid" ]]
+    if [[ ! -z "$_inotify_pid" ]]
     then
-        return
+        kill "$_inotify_pid" >/dev/null 2&>1
+        _inotify_pid=""
     fi
-    if [[ -z "$_fifo" ]]
+    if [[ ! -z "$_fifo" ]]
     then
-        echo "Critical: _fifo not set, but inotifywait launched!?" 1>&2
-        exit 1
+        rm -f "$_fifo"
+        _fifo=""
     fi
-    kill "$_inotify_pid" >/dev/null 2&>1
-    rm -f "$_fifo"
 }
 
 trap 'stop_inotifywait' EXIT
 
 while true
 do
+    new_parent_dir=$(get_parent_dir "$target_file")
     parent_dir="$new_parent_dir"
+    echo "New parent dir: $parent_dir"
     stop_inotifywait
     launch_inotifywait "$parent_dir"
-    echo "New parent dir: $parent_dir"
+    # inotify relaunch could miss some events.
+    if [ -e "$target_file" ]
+    then
+        exit 0
+    fi
 
     while read -r created
     do
@@ -80,7 +84,6 @@ do
             exit 0
         fi
         new_parent_dir=$(get_parent_dir "$target_file")
-        echo "$new_parent_dir"
         if [[ ! "$parent_dir" = "$new_parent_dir" ]]
         then
             break
